@@ -18,7 +18,7 @@ int main(int argc, char const *argv[]) {
 
   info.host_addrinfos = addrinfos;
 
-  int cmd_sock_fd = connect_to_host(&info, FTP_TCP_CTRL_PORT);
+  int cmd_sock_fd = connect_to_host(&info, FTP_CTRL_PORT);
 
   if (cmd_sock_fd < 0) {
     printf("error: couldn't connect to host ftp control port");
@@ -26,18 +26,18 @@ int main(int argc, char const *argv[]) {
     return 1;
   }
 
-  in_port_t data_port = host_data_port();
+  in_port_t data_port = host_data_port(NULL);
 
   int data_sock_fd = connect_to_host(&info, data_port);
 
-  if (cmd_sock_fd < 0) {
+  if (data_sock_fd < 0) {
     printf("error: couldn't connect to host ftp data port");
     freeaddrinfo(addrinfos);
     return 1;
   }
 
   close(cmd_sock_fd);
-
+  close(data_sock_fd);
   freeaddrinfo(addrinfos);
   
   return 0;
