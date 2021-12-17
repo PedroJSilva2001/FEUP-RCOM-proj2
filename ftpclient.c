@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <regex.h>
 
 struct addrinfo *host_IPaddrinfos(char *host, char *service) {
   struct addrinfo hints;
@@ -45,22 +46,17 @@ int connect_to_host(ftp_client_info *info, in_port_t port) {
   }
 
   void *host_sockaddr;
+  unsigned long size;
 
-  switch(i.ai_family) { 
-    case AF_INET:
-      ((struct sockaddr_in*) i.ai_addr)->sin_port = net_ord_port;
-      host_sockaddr = &((struct sockaddr_in *) i.ai_addr)->sin_addr;
-    break;
-
-    case AF_INET6:
-      ((struct sockaddr_in6*) i.ai_addr)->sin6_port = net_ord_port;
-      host_sockaddr = &((struct sockaddr_in6 *) i.ai_addr)->sin6_addr;
-    break;
+  if (i.ai_family == AF_INET) {
+    ((struct sockaddr_in*) i.ai_addr)->sin_port = net_ord_port;
+    host_sockaddr = &((struct sockaddr_in *) i.ai_addr)->sin_addr;
+    size = sizeof(struct sockaddr_in);   
+  } else {
+    ((struct sockaddr_in6*) i.ai_addr)->sin6_port = net_ord_port;
+    host_sockaddr = &((struct sockaddr_in6 *) i.ai_addr)->sin6_addr;
+    size = sizeof(struct sockaddr_in6);   
   }
-
-  unsigned long size = i.ai_family == AF_INET? 
-                sizeof(struct sockaddr_in) : 
-                sizeof(struct sockaddr_in6);
 
   if (connect(sock_fd, (struct sockaddr *) host_sockaddr, size) < 0) {
     fprintf(stderr, "connect: %s\n", strerror(errno));
@@ -71,6 +67,28 @@ int connect_to_host(ftp_client_info *info, in_port_t port) {
   return sock_fd;
 }
 
-in_port_t host_data_port() {  //PASSIVE
-  return -1;
+in_port_t host_data_port(char *port) {  //PASSIVE
+  char *bytes = strtok(port, '.');
+  uint8_t MSB = bytes[0];
+  uint8_t LSB = bytes[1];
+  return MSB << 8u | LSB;
+}
+
+int parse_URL(ftp_client_info *info, char *url) {
+  regex_t regex;
+  regmatch_t capt_groups[5];
+  const char *pattern = 
+  "(?<protocol>ftp:\/\/)(?:(?<user>\w+):(?<password>\w+)@)?(?<host>(?:(?:\w+\.)+\w+)\/?)(?<url_path>(?:(?:[\w-]+\/)*)(?:(?:\w+\.)*\w+)\/?)?";
+
+  #define PROTO_CAPT_GROUP 0
+  #define USER_CAPT_GROUP  1
+  #define PASS_CAPT_GROUP  2
+  #define HOST_CAPT_GROUP  3
+  #define PATH_CAPT_GROUP  4
+
+  regcomp(&regex, pattern, REG_EXTENDED);
+  /*
+  (?<protocol>ftp:\/\/)(?:(?<user>\w+):(?<password>\w+)@)?(?<host>(?:(?:\w+\.)+\w+)\/?)(?<url_path>(?:(?:[\w-]+\/)*)(?:(?:\w+\.)*\w+)\/?)?
+  
+  */
 }
