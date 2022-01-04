@@ -10,19 +10,38 @@
 #include <string.h>
 #include <errno.h>
 #include <regex.h>
+#include <ctype.h>
 
-struct addrinfo *host_IPaddrinfos(char *host, char *service) {
+FILE *stream;
+
+int open_connect_socket(struct addrinfo *addr) {
+  int socket_fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+
+  if (socket_fd < 0) {
+    fprintf(stderr, "socket: %s\n", strerror(errno));
+    return -1;
+  }
+
+  if (connect(socket_fd, addr->ai_addr, (socklen_t) addr->ai_addrlen) < 0) {
+    fprintf(stderr, "connect: %s\n", strerror(errno));
+    close(socket_fd);
+  }
+
+  return socket_fd;  
+}
+
+struct addrinfo *host_IPaddrinfos(char *host, char *port) {
   struct addrinfo hints;
   struct addrinfo *infos;
 
   memset(&hints, 0, sizeof(hints));
-  struct sockaddr_in6 ad;
-  hints.ai_family |=  AF_UNSPEC; //IPv4 or IPv6
+
+  hints.ai_family |= AF_INET; //IPv4
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
   hints.ai_flags |= AI_CANONNAME;
 
-  int err = getaddrinfo(host, service, &hints, &infos);
+  int err = getaddrinfo(host, port, &hints, &infos);
 
   if (err != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
@@ -32,46 +51,31 @@ struct addrinfo *host_IPaddrinfos(char *host, char *service) {
   return infos;
 }
 
-int connect_to_host(ftp_client_info *info, in_port_t port) {
-  int sock_fd;
-  in_port_t net_ord_port = htons(port);
+int connect_to_host(ftp_client_info *info) {
+  int socket_fd = -1;
+  struct addrinfo *host_addrinfos = host_IPaddrinfos(info->host, FTP_CTRL_PORT);
 
-  struct addrinfo i = info->host_addrinfos[0]; // choose IP first
-
-  sock_fd = socket(i.ai_family, SOCK_STREAM, IPPROTO_TCP);
-
-  if (sock_fd < 0) {
-    fprintf(stderr, "socket: %s\n", strerror(errno));
+  if (host_addrinfos == NULL) {
+    fprintf(stderr, "error: couldn't find host IP socket address\n");
     return -1;
   }
 
-  void *host_sockaddr;
-  unsigned long size;
-
-  if (i.ai_family == AF_INET) {
-    ((struct sockaddr_in*) i.ai_addr)->sin_port = net_ord_port;
-    host_sockaddr = &((struct sockaddr_in *) i.ai_addr)->sin_addr;
-    size = sizeof(struct sockaddr_in);   
-  } else {
-    ((struct sockaddr_in6*) i.ai_addr)->sin6_port = net_ord_port;
-    host_sockaddr = &((struct sockaddr_in6 *) i.ai_addr)->sin6_addr;
-    size = sizeof(struct sockaddr_in6);   
+  for (struct addrinfo *p = host_addrinfos; p != NULL; p = p->ai_next) {
+    socket_fd = open_connect_socket(p);
+    if (socket_fd != -1) {
+      break;
+    }
   }
 
-  if (connect(sock_fd, (struct sockaddr *) host_sockaddr, size) < 0) {
-    fprintf(stderr, "connect: %s\n", strerror(errno));
-    close(sock_fd);
-    return -1;
-  }
-
-  return sock_fd;
+  //don't forget to free host_addrinfos
+  // freeaddrinfo(host_addrinfos);
+  return socket_fd;
 }
 
-in_port_t host_data_port(char *port) {  //PASSIVE
-  char *bytes = strtok(port, '.');
-  uint8_t MSB = bytes[0];
-  uint8_t LSB = bytes[1];
-  return MSB << 8u | LSB;
+char *host_data_port(char *socket_addr) {  //PASSIVE
+  //TODO: parse socket_addr, get port MSB AND LSB,
+  // and return (MSB << 8u | LSB) as string
+  return NULL;
 }
 
 int parse_URL(ftp_client_info *info, char *url) {
@@ -94,5 +98,6 @@ int parse_URL(ftp_client_info *info, char *url) {
   if (res != 0) {
     return -1;
   }
-  
+
+  return 0;
 }
