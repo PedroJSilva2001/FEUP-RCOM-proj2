@@ -84,7 +84,7 @@ int set_client_param(regmatch_t capt_group, char *url, char *buf, int bufsize) {
   int start = capt_group.rm_so;
   int end = capt_group.rm_eo;
 
-  if (end-start > bufsize) {  //bug \0
+  if (end-start > bufsize-1) {
     return 1;
   }
 
