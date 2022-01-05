@@ -25,6 +25,7 @@ int open_connect_socket(struct addrinfo *addr) {
   if (connect(socket_fd, addr->ai_addr, (socklen_t) addr->ai_addrlen) < 0) {
     fprintf(stderr, "connect: %s\n", strerror(errno));
     close(socket_fd);
+    return -1;
   }
 
   return socket_fd;  
@@ -83,7 +84,7 @@ int set_client_param(regmatch_t capt_group, char *url, char *buf, int bufsize) {
   int start = capt_group.rm_so;
   int end = capt_group.rm_eo;
 
-  if (end-start > bufsize) {
+  if (end-start > bufsize) {  //bug \0
     return 1;
   }
 
