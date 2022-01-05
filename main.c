@@ -18,7 +18,7 @@ int main(int argc, char const *argv[]) {
   int url_err = parse_URL(&info, url);
 
   if (url_err) {
-    printf("%s", url_err_table[url_err]);
+    log_url_err(url_err);
     return 1;
   }
 

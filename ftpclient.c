@@ -12,6 +12,22 @@
 #include <regex.h>
 #include <ctype.h>
 
+#define INVALID_URL_FORMAT 1
+#define HOSTNAME_TOO_BIG   2
+#define FILEPATH_TOO_BIG   3
+#define USER_TOO_BIG       4
+#define PASS_TOO_BIG       5
+
+static const char *url_err_table[6] = {
+                            NULL,
+                            "The URL given as input is invalid\nIt must be in the format ftp://[<user>:<pass>@]<hostname>/<path>\n",
+                            "Hostname is too big\n",
+                            "Filepath is too big\n",
+                            "Username is too big\n",
+                            "Password is too big\n"   
+                         };
+
+
 FILE *stream;
 
 int open_connect_socket(struct addrinfo *addr) {
@@ -146,4 +162,8 @@ int parse_URL(ftp_client_info *info, char *url) {
   }
 
   return 0;
+}
+
+void log_url_err(int err) {
+  printf("%s", url_err_table[err]);
 }
