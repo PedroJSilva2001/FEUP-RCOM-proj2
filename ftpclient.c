@@ -78,16 +78,50 @@ char *host_data_port(char *socket_addr) {  //PASSIVE
   return NULL;
 }
 
+
+int set_client_param(regmatch_t capt_group, char *url, char *buf, int bufsize) {
+  int start = capt_group.rm_so;
+  int end = capt_group.rm_eo;
+
+  if (end-start > bufsize) {
+    return 1;
+  }
+
+  memcpy(buf, &url[start], end-start);
+
+  return 0;
+}
+
+/*int set_client_param(regmatch_t *capt_groups, int group, char *url, char *buf, int bufsize) {
+  int start = capt_groups[group].rm_so;
+  int end = capt_groups[group].rm_eo;
+
+  if (start == end) {
+    return -1;
+  }
+
+  if (end-start > bufsize) {
+    return -2;
+  }
+
+  memcpy(buf, &url[start], end-start);
+
+  return 0;
+}*/
+
+
 int parse_URL(ftp_client_info *info, char *url) {
   regex_t regex;
   regmatch_t capt_groups[7];
   // this regex accepts invalid paths and domain names but we don't care because we catch them later
-  const char *pattern = "ftp://(((.*):(.*)@)?([^/]*)/?)(.*)";
-
+  const char *pattern = "ftp://(((.*):(.*)@)?([^/]+)/)(.+)";
+  
   #define USER_CAPT_GROUP 3
   #define PASS_CAPT_GROUP 4
   #define HOST_CAPT_GROUP 5
   #define PATH_CAPT_GROUP 6
+  
+  #define MISSING_GROUP(capts, group) (capts[group].rm_eo == capts[group].rm_so)
 
   regcomp(&regex, pattern, REG_EXTENDED);
 
@@ -96,7 +130,36 @@ int parse_URL(ftp_client_info *info, char *url) {
   regfree(&regex);
 
   if (res != 0) {
-    return -1;
+    return INVALID_URL_FORMAT;
+  }
+
+  // the regex checks if host and path are missing
+  if (set_client_param(capt_groups[HOST_CAPT_GROUP], 
+                          url, info->host, MAX_HOSTNAME_SIZE)) {
+    return HOSTNAME_TOO_BIG;
+  }
+
+  if (set_client_param(capt_groups[PATH_CAPT_GROUP],
+                          url, info->path, MAX_FILEPATH_SIZE)) {
+    return FILEPATH_TOO_BIG;
+  }
+
+  if (!MISSING_GROUP(capt_groups, USER_CAPT_GROUP)) {
+    info->user_specified = 1;
+
+    if (set_client_param(capt_groups[USER_CAPT_GROUP],
+                          url, info->user, MAX_USER_SIZE)) {
+      return USER_TOO_BIG;
+    }
+  }
+
+  if (!MISSING_GROUP(capt_groups, PASS_CAPT_GROUP)) {
+    info->pass_specified = 1;
+    
+    if (set_client_param(capt_groups[PASS_CAPT_GROUP],
+                          url, info->pass, MAX_PASS_SIZE)) {
+      return PASS_TOO_BIG;
+    }
   }
 
   return 0;
