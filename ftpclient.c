@@ -21,8 +21,8 @@
 static const char *url_err_table[6] = {
                             NULL,
                             "The URL given as input is invalid\nIt must be in the format ftp://[<user>:<pass>@]<hostname>/<path>\n",
-                            "Hostname is too big\n",
-                            "Filepath is too big\n",
+                            "Hostname has an invalid size\n",
+                            "Filepath has an invalid size\n",
                             "Username is too big\n",
                             "Password is too big\n"   
                          };
