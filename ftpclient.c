@@ -105,26 +105,26 @@ int set_client_param(regmatch_t capt_group, char *url, char *buf, int bufsize) {
   }
 
   memcpy(buf, &url[start], end-start);
-
+printf("%s\n", buf);
   return 0;
 }
 
 int parse_URL(ftp_client_info *info, char *url) {
   regex_t regex;
-  regmatch_t capt_groups[7];
+  regmatch_t capt_groups[6];
   // this regex accepts invalid paths and domain names but we don't care because we catch them later
-  const char *pattern = "ftp://(((.*):(.*)@)?([^/]+)/)(.+)";
+  const char *pattern = "ftp://((.*):(.*)@)?([^/]+)/(.+)";
 
-  #define USER_CAPT_GROUP 3
-  #define PASS_CAPT_GROUP 4
-  #define HOST_CAPT_GROUP 5
-  #define PATH_CAPT_GROUP 6
+  #define USER_CAPT_GROUP 2
+  #define PASS_CAPT_GROUP 3
+  #define HOST_CAPT_GROUP 4
+  #define PATH_CAPT_GROUP 5
   
   #define MISSING_GROUP(capts, group) (capts[group].rm_eo == capts[group].rm_so)
 
   regcomp(&regex, pattern, REG_EXTENDED);
 
-  int res = regexec(&regex, url, 7, capt_groups, 0);
+  int res = regexec(&regex, url, 6, capt_groups, 0);
 
   regfree(&regex);
 
