@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <regex.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 FILE *stream;
 
@@ -162,5 +163,33 @@ int parse_URL(ftp_client_info *info, char *url) {
     }
   }
 
+  return 0;
+}
+
+int send(int socket_fd, char* message) {
+    int bytes = write(socket_fd, message, strlen(message));
+    if (bytes <= 0) {
+      perror("write()");
+      return -1;
+    }
+    return 0;
+}
+
+int save_file(int socket_fd, char* filename) {
+  int file_fd = open(filename, O_WRONLY | O_CREAT, 0777);
+
+  if (file_fd < 0)
+    return -1;
+
+  int bytes;
+  char buf[1];
+
+  while ((bytes = read(socket_fd, buf, sizeof(buf))) > 0) {
+      if (write(file_fd, buf, bytes) < 0) {
+        return -1;
+      }
+  }
+
+  close(file_fd);
   return 0;
 }

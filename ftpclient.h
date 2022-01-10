@@ -50,4 +50,8 @@ int enter_passive_mode(int ctrl_socket_fd);
 
 int read_code(FILE *stream);
 
+int send(int socket_fd, char* message);
+
+int save_file(int socket_fd, char* filename);
+
 #endif
