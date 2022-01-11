@@ -2,13 +2,15 @@ CC=gcc
 SRC_DIR=src
 BIN_DIR=bin
 
-CFLAGS = -Wall -g -o -lm
+CFLAGS = -Wall
 
-FILES = $(SRC_DIR)/ftpclient.c $(SRC_DIR)/main.c
+SRC_FILES =  ${SRC_DIR}/main.c ${SRC_DIR}/ftpclient.c
 
-make: ${FILES}
-		@mkdir -p $(BIN_DIR)
-		@$(CC) -o ${CFLAGS} $(BIN_DIR)/download ${FILES}
+make: ${SRC_FILES}
+	  @mkdir -p $(BIN_DIR)
+	  @$(CC) -o $(BIN_DIR)/download ${SRC_FILES} ${CFLAGS}
 
 clean:
-		@rm -f {BIN_DIR}/*
+	  @rm -f $(BIN_DIR)/*
+	  @rmdir $(BIN_DIR)
+	  
