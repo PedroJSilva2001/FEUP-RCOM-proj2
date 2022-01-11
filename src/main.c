@@ -9,16 +9,18 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-int main(int argc, char const *argv[]) {
+int main(int argc, const char *argv[]) {
+  if (argc != 2) {
+    printf("error: invalid number of parameters\nUse case is: download <URL>\n");
+    return 1;
+  }
+
   ftp_client_info info;
-  memset(&info, 0, sizeof(info));
 
-  char *url = "ftp://anonymous:pass@ftp.up.pt/pub/kodi/timestamp.txt";
-
-  int url_err = parse_URL(&info, url);
+  int url_err = parse_URL(&info, argv[1]);
 
   if (url_err) {
-    log_url_err(url_err);
+    printf("error: the URL is incorrect\nIt should follow the format: ftp://[<user>:<pass>@]<host>/<path>");
     return 1;
   }
 

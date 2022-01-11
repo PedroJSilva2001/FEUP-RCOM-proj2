@@ -13,22 +13,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 
-#define INVALID_URL_FORMAT 1
-#define HOSTNAME_TOO_BIG   2
-#define FILEPATH_TOO_BIG   3
-#define USER_TOO_BIG       4
-#define PASS_TOO_BIG       5
-
-static const char *url_err_table[6] = {
-                            NULL,
-                            "The URL given as input is invalid\nIt must be in the format ftp://[<user>:<pass>@]<hostname>/<path>\n",
-                            "Hostname has an invalid size\n",
-                            "Filepath has an invalid size\n",
-                            "Username is too big\n",
-                            "Password is too big\n"   
-                         };
-
-
 FILE *stream;
 
 int open_connect_socket(struct addrinfo *addr) {
@@ -97,20 +81,25 @@ char *host_data_port(char *socket_addr) {  //PASSIVE
 }
 
 
-int set_client_param(regmatch_t capt_group, char *url, char *buf, int bufsize) {
+char *get_client_param(regmatch_t capt_group, const char *url) {
   int start = capt_group.rm_so;
   int end = capt_group.rm_eo;
+  int size = end-start;
 
-  if (end-start > bufsize-1) {
-    return 1;
+  if (size == 0) {
+    return NULL;
   }
 
-  memcpy(buf, &url[start], end-start);
-printf("%s\n", buf);
-  return 0;
+  char *param = malloc(sizeof(char)*size+1);
+
+  memcpy(param, &url[start], size);
+
+  param[size] = '\0';
+  
+  return param;
 }
 
-int parse_URL(ftp_client_info *info, char *url) {
+int parse_URL(ftp_client_info *info, const char *url) {
   regex_t regex;
   regmatch_t capt_groups[6];
   // this regex accepts invalid paths and domain names but we don't care because we catch them later
@@ -121,8 +110,6 @@ int parse_URL(ftp_client_info *info, char *url) {
   #define HOST_CAPT_GROUP 4
   #define PATH_CAPT_GROUP 5
   
-  #define MISSING_GROUP(capts, group) (capts[group].rm_eo == capts[group].rm_so)
-
   regcomp(&regex, pattern, REG_EXTENDED);
 
   int res = regexec(&regex, url, 6, capt_groups, 0);
@@ -130,44 +117,17 @@ int parse_URL(ftp_client_info *info, char *url) {
   regfree(&regex);
 
   if (res != 0) {
-    return INVALID_URL_FORMAT;
+    return 1;
   }
 
-  // the regex checks if host and path are missing
-  if (set_client_param(capt_groups[HOST_CAPT_GROUP], 
-                          url, info->host, MAX_HOSTNAME_SIZE)) {
-    return HOSTNAME_TOO_BIG;
-  }
-
-  if (set_client_param(capt_groups[PATH_CAPT_GROUP],
-                          url, info->path, MAX_FILEPATH_SIZE)) {
-    return FILEPATH_TOO_BIG;
-  }
-
-  if (!MISSING_GROUP(capt_groups, USER_CAPT_GROUP)) {
-    info->user_specified = 1;
-
-    if (set_client_param(capt_groups[USER_CAPT_GROUP],
-                          url, info->user, MAX_USER_SIZE)) {
-      return USER_TOO_BIG;
-    }
-  }
-
-  if (!MISSING_GROUP(capt_groups, PASS_CAPT_GROUP)) {
-    info->pass_specified = 1;
-    
-    if (set_client_param(capt_groups[PASS_CAPT_GROUP],
-                          url, info->pass, MAX_PASS_SIZE)) {
-      return PASS_TOO_BIG;
-    }
-  }
+  info->user = get_client_param(capt_groups[USER_CAPT_GROUP], url);
+  info->pass = get_client_param(capt_groups[PASS_CAPT_GROUP], url);
+  info->host = get_client_param(capt_groups[HOST_CAPT_GROUP], url);
+  info->path = get_client_param(capt_groups[PATH_CAPT_GROUP], url);
 
   return 0;
 }
 
-void log_url_err(int err) {
-  printf("%s", url_err_table[err]);
-}
 
 int send_command(int socket_fd, char* message) {
     int bytes = write(socket_fd, message, strlen(message));
