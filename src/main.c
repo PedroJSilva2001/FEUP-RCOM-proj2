@@ -1,13 +1,7 @@
-#include "ftpclient.h"
+#include "ftpcom.h"
+#include "ftpconn.h"
 
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 
 int main(int argc, const char *argv[]) {
   if (argc != 2) {
@@ -28,6 +22,7 @@ int main(int argc, const char *argv[]) {
 
   if (ctrl_socket_fd == -1) {
     printf("error: couldn't connect to host FTP control port\n");
+    return 1;
   }
 
   return 0;

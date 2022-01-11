@@ -1,12 +1,12 @@
-#ifndef FTPCLIENT_H
-#define FTPCLIENT_H
+#ifndef FTP_CONNECTION_H
+#define FTP_CONNECTION_H
 
-#include <netdb.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <stdio.h>
+#include <regex.h>
 
 #define FTP_CTRL_PORT "21"
-#define MAX_CODES 100
 
 typedef struct {
   char *user;
@@ -21,14 +21,8 @@ int connect_to_host(ftp_client_info *info);
 
 char *host_data_port(char *socket_addr);
 
+char *get_client_param(regmatch_t capt_group, const char *url);
+
 int parse_URL(ftp_client_info *info, const char *url);
-
-int enter_passive_mode(int ctrl_socket_fd);
-
-int read_code(FILE *stream);
-
-int send_command(int socket_fd, char* message);
-
-int save_file(int socket_fd, char* filename);
 
 #endif

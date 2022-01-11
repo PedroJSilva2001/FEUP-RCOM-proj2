@@ -4,7 +4,7 @@ BIN_DIR=bin
 
 CFLAGS = -Wall
 
-SRC_FILES =  ${SRC_DIR}/main.c ${SRC_DIR}/ftpclient.c
+SRC_FILES =  ${SRC_DIR}/main.c ${SRC_DIR}/ftpconn.c ${SRC_DIR}/ftpcom.c 
 
 make: ${SRC_FILES}
 	  @mkdir -p $(BIN_DIR)
