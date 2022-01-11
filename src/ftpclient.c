@@ -169,7 +169,7 @@ void log_url_err(int err) {
   printf("%s", url_err_table[err]);
 }
 
-int send(int socket_fd, char* message) {
+int send_command(int socket_fd, char* message) {
     int bytes = write(socket_fd, message, strlen(message));
     if (bytes <= 0) {
       perror("write()");

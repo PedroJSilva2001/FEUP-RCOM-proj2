@@ -36,7 +36,7 @@ int read_code(FILE *stream);
 
 void log_url_err(int err);
 
-int send(int socket_fd, char* message);
+int send_command(int socket_fd, char* message);
 
 int save_file(int socket_fd, char* filename);
 
