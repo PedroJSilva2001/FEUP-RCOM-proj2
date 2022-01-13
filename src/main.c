@@ -25,5 +25,42 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
+  printf("Connection established.\n");
+
+  if (login(ctrl_socket_fd, info) == -1) {
+    printf("error: couldn't login\n");
+    return 1;
+  }
+
+  printf("Logged in.\n");
+
+  if (enter_passive_mode(ctrl_socket_fd) == -1) {
+    printf("error: couldn't enter passive mode\n");
+    return 1;
+  }
+
+  printf("Entered passive mode.\n");
+
+  if (retrieve(ctrl_socket_fd, info) == -1) {
+    printf("error: couldn't retrieve\n");
+    return 1;
+  }
+
+  printf("File retrived.\n");
+
+  if (save_file(ctrl_socket_fd, ??) == -1) {  // TODO: COMPLETE?
+    printf("error: couldn't save file\n");
+    return 1;
+  }
+
+  printf("File saved successfully.\n");
+
+  if (disconnect(ctrl_socket_fd) == -1) {
+    printf("error: couldn't disconnect\n");
+    return 1;
+  }
+
+  printf("Disconnected successfully.\n");
+
   return 0;
 }
