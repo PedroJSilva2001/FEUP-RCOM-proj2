@@ -9,6 +9,53 @@
 #include <ctype.h>
 #include <fcntl.h>
 
+int login(int socket_fd, ftp_client_info info) {
+  // TODO
+  char command_user[MAX_SIZE];
+  sprintf(command_user, "user %s\r\n", info.user);
+
+  if (send_command(socket_fd, command_user)) return -1;
+
+  // TODO: RESPONSE READ
+
+  char command_pass[MAX_SIZE]; 
+  sprintf(command_pass, "pass %s\r\n", info.pass);
+
+  if (send_command(socket_fd, command_pass)) return -1;
+
+  // TODO: RESPONSE READ
+
+  return 0;
+}
+
+int enter_passive_mode(int socket_fd) {
+  // TODO
+  if (send_command(socket_fd, "pasv\r\n")) return 1;
+
+  // TODO: RESPONSE READ -> resulta num buf
+
+  // PORT h1,h2,h3,h4,p1,p2
+  int ip[4], ports[2];
+
+  if (scanf(buf, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).", &ip[0], &ip[1], &ip[2], &ip[3], &ports[0], &ports[1]) < 0) return -1;
+
+  int port = ports[0] * 256 + ports[1];
+
+  // TODO: CONNECT SOCKET
+  return 0;
+}
+
+int retrieve(int socket_fd, ftp_client_info info) {
+  char command[MAX_SIZE];
+  sprintf(command, "retr %s\r\n", info.path);
+
+  if (send_command(socket_fd, command)) return -1;
+
+  // TODO: RESPONSE READ
+
+  return 0;
+}
+
 int send_command(int socket_fd, char* message) {
     int bytes = write(socket_fd, message, strlen(message));
     if (bytes <= 0) {
@@ -25,7 +72,7 @@ int save_file(int socket_fd, char* filename) {
     return -1;
 
   int bytes;
-  char buf[1];
+  char buf[MAX_SIZE];
 
   while ((bytes = read(socket_fd, buf, sizeof(buf))) > 0) {
       if (write(file_fd, buf, bytes) < 0) {

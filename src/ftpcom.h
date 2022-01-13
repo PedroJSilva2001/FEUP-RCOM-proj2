@@ -26,11 +26,13 @@ typedef enum {
   AWAITING_NEWLINE
 } ftp_reply_state;
 
-int login(ftp_client_info);  // USER PASS
+#define MAX_SIZE 1024
+
+int login(int socket_fd, ftp_client_info info);  // USER PASS
 
 int enter_passive_mode(int ctrl_socket_fd);  // send PASV\r\n (without space in the middle)
 
-int download(); // send RETR PATH\r\n
+int retrieve(int socket_fd, ftp_client_info info);
 
 int send_command(int socket_fd, char* message);
 
