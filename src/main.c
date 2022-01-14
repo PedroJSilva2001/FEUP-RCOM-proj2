@@ -27,7 +27,7 @@ int main(int argc, const char *argv[]) {
 
   printf("Connection established.\n");
 
-  if (login(ctrl_socket_fd, info) == -1) {
+  if (login(ctrl_socket_fd, &info) == -1) {
     printf("error: couldn't login\n");
     return 1;
   }
@@ -41,14 +41,14 @@ int main(int argc, const char *argv[]) {
 
   printf("Entered passive mode.\n");
 
-  if (retrieve(ctrl_socket_fd, info) == -1) {
+  if (retrieve(ctrl_socket_fd, &info) == -1) {
     printf("error: couldn't retrieve\n");
     return 1;
   }
 
   printf("File retrived.\n");
 
-  if (save_file(ctrl_socket_fd, ??) == -1) {  // TODO: COMPLETE?
+  if (save_file(ctrl_socket_fd, "oi") == -1) {  // TODO: COMPLETE?
     printf("error: couldn't save file\n");
     return 1;
   }
