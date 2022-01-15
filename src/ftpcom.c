@@ -84,26 +84,25 @@ int save_file(int socket_fd, char* filename) {
   return 0;
 }
 
-ftp_reply *create_reply() {
-  ftp_reply *reply = malloc(sizeof(ftp_reply));
-  
-  reply->buf = malloc(sizeof(char)*BASE_REPLY_LEN+1);
-  memset(reply->buf, 0, BASE_REPLY_LEN+1);
+void create_reply(ftp_reply *reply) {  
+  reply->text = calloc(BASE_REPLY_LEN+1, sizeof(char));
   memset(reply->code, 0, CODE_SIZE+1);
-  reply->real_size = BASE_REPLY_LEN+1;
-  reply->strlen = 0;
+  reply->real_len = BASE_REPLY_LEN+1;
+  reply->text_len = 0;
+}
 
-  return reply;
+void free_reply(ftp_reply *reply) {
+  free(reply->text);
 }
 
 void concat_to_reply(ftp_reply *reply, char *str, int n) {
-  if (reply->strlen+n >= reply->real_size) {  // >=
-    reply->buf = realloc(reply->buf, 2*(reply->strlen+n));
-    reply->real_size = 2*(reply->strlen+n);
+  if (reply->text_len+n >= reply->real_len) {  // >=
+    reply->text = realloc(reply->text, 2*(reply->text_len+n));
+    reply->real_len = 2*(reply->text_len+n);
   }
 
-  strncat(reply->buf, str, n);
-  reply->strlen += n;
+  strncat(reply->text, str, n);
+  reply->text_len += n;
 }
 
 int nl_1st_occurence_offset(char *buf, int n) {
@@ -116,8 +115,8 @@ int nl_1st_occurence_offset(char *buf, int n) {
   return -1;
 }
 
-int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
-  ftp_reply *rep = create_reply();
+int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
+  create_reply(reply);
   ftp_reply_state reply_state = START;
 
   char lstart[LINE_START_SIZE+1];
@@ -148,19 +147,19 @@ int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
           reply_state = LINE_SEPARATOR(lstart) == ' '?
                             AWAITING_END_NEWLINE : AWAITING_NEWLINE;
           start_count = 0;
-          memcpy(rep->code, lstart, CODE_SIZE);
+          memcpy(reply->code, lstart, CODE_SIZE);
         } else {
           lstart[start_count++] = buf[i];
         }
 
-        concat_to_reply(rep, &buf[i], 1);
+        concat_to_reply(reply, &buf[i], 1);
       }
 
       else if (reply_state == AWAITING_LINE_START) {
         if (start_count == CODE_SIZE) {
           lstart[start_count] = buf[i];
           if (VALID_LINE_START(lstart) && LINE_SEPARATOR(lstart) == ' '
-                && (strncmp(rep->code, lstart, CODE_SIZE) == 0)) {
+                && (strncmp(reply->code, lstart, CODE_SIZE) == 0)) {
             reply_state = AWAITING_END_NEWLINE;
           } else {
             reply_state = AWAITING_NEWLINE;
@@ -170,7 +169,7 @@ int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
           lstart[start_count++] = buf[i];
         }
 
-        concat_to_reply(rep, &buf[i], 1);
+        concat_to_reply(reply, &buf[i], 1);
       }
 
       else if (reply_state == AWAITING_NEWLINE) {
@@ -178,12 +177,12 @@ int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
 
         // add all chars because we didnt find newline
         if (off == -1) {
-          concat_to_reply(rep, &buf[i], bytes-i);
+          concat_to_reply(reply, &buf[i], bytes-i);
           break;
         }
 
         // add chars up to newline
-        concat_to_reply(rep, &buf[i], off+1);
+        concat_to_reply(reply, &buf[i], off+1);
         reply_state = AWAITING_LINE_START;
         i += off;
       }
@@ -194,7 +193,7 @@ int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
         if (off != -1 && i+off < bytes-1) { return IMPL_ERROR; }
 
         // add chars up to newline or end of buf (no newline was found)
-        concat_to_reply(rep, &buf[i], bytes-i);
+        concat_to_reply(reply, &buf[i], bytes-i);
 
         if (off == -1) {
           continue;
@@ -206,7 +205,5 @@ int read_reply(int ctrl_socket_fd, ftp_reply **reply) {
     }
   }
 
-  *reply = rep;
-  printf("end = %s", rep->buf);
   return 0;
 }

@@ -18,9 +18,9 @@
                                || line[3] == '-')
 
 typedef struct {
-  char *buf;
-  int real_size;
-  int strlen;
+  char *text;
+  unsigned int real_len;
+  unsigned int text_len;
   char code[CODE_SIZE+1];
 } ftp_reply;
 
@@ -44,10 +44,12 @@ int send_command(int socket_fd, char* message);
 
 int save_file(int socket_fd, char* filename);
 
-ftp_reply *create_reply();
+void create_reply(ftp_reply *reply);
 
 void concat_to_reply(ftp_reply *reply, char *str, int n);
 
-int read_reply(int ctrl_socket_fd, ftp_reply **reply);
+void free_reply(ftp_reply *reply);
+
+int read_reply(int ctrl_socket_fd, ftp_reply *reply);
 
 #endif
