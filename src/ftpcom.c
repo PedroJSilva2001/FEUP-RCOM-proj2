@@ -71,7 +71,11 @@ int send_command_fm(int ctrl_socket_fd, const char *format, int format_len, char
   char *command = malloc(sizeof(char) * (format_len + strlen(param)));  
   sprintf(command, format, param);  	
 
-  return send_command(ctrl_socket_fd, command);
+  int err = send_command(ctrl_socket_fd, command);
+
+  free(command);
+
+  return err;
 }
 
 int save_file(int socket_fd, char* filename) {
