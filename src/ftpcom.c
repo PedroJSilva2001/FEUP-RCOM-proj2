@@ -9,21 +9,75 @@
 #include <ctype.h>
 #include <fcntl.h>
 
-int login(int socket_fd, ftp_client_info *info) {
-  // TODO
-  char command_user[MAX_SIZE];
-  sprintf(command_user, "user %s\r\n", info->user);
+int login(int ctrl_socket_fd, ftp_client_info *info) {
+  char *user = info->user == NULL? "anonymous" : info->user;
 
-  if (send_command(socket_fd, command_user)) return -1;
+  if (send_command_fm(ctrl_socket_fd, "USER %s\r\n", CMD_BASE_LEN, user) == -1) {
+    printf("error: could not send USER command to host\n");
+	  return 1;
+  }
+ 
+  ftp_reply reply_user;
+  int err = read_reply(ctrl_socket_fd, &reply_user);
+  printf("%s", reply_user.text);
+  if (err) { return err; }
 
-  // TODO: RESPONSE READ
+  char *codes_user[7] = {"230", "331", "332", "421", "500", "501", "530"};
 
-  char command_pass[MAX_SIZE]; 
-  sprintf(command_pass, "pass %s\r\n", info->pass);
+  if (assert_valid_code(reply_user.code, codes_user, 7)) {
+    printf("error: host has sent a reply that does not match any valid one expected; host might be implementing incorrectly the FTP standard\n");
+    printf("reply sent from host:\n%s", reply_user.text);
+    free_reply(&reply_user);
+	  return 1;
+  }
 
-  if (send_command(socket_fd, command_pass)) return -1;
+  if (reply_user.code[0] == 5 || reply_user.code[0] == 4 || strcmp(reply_user.code, "332") == 0) {	
+	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
+    printf("reply sent from host:\n%s", reply_user.text);
+    free_reply(&reply_user);
+  	return 1;
+  }
 
-  // TODO: RESPONSE READ
+  if (strcmp(reply_user.code, "230") == 0) {
+    if (info->pass != NULL) {
+      printf("warning: a password was specified by user but not needed for log in\n");
+    }
+    free_reply(&reply_user);
+	  return 0;
+  }
+
+  free_reply(&reply_user);
+
+  char *pass = info->pass == NULL? " " : info->pass;
+
+  if (send_command_fm(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass) == -1) {
+    printf("error: could not send PASS command to host\n");
+  }
+
+  ftp_reply reply_pass;
+  err = read_reply(ctrl_socket_fd, &reply_pass);
+  printf("%s", reply_pass.text);
+  if (err) { return err; }
+
+
+  char *codes_pass[8] = {"202", "230", "332", "421", "500", "501", "503", "530"};
+
+  if (assert_valid_code(reply_pass.code, codes_pass, 8)) {
+    printf("error: host has sent a reply that does not match any valid one expected; host might be implementing incorrectly the FTP standard\n");
+    printf("reply sent from host:\n%s", reply_pass.text);
+    free_reply(&reply_pass);
+	  return 1;
+  }
+
+  
+  if (reply_pass.code[0] == 5 || reply_pass.code[0] == 4 || reply_pass.code[0] == 3) {	
+	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
+    printf("reply sent from host:\n%s", reply_pass.text);
+    free_reply(&reply_pass);
+    return 1;
+  }
+
+  free_reply(&reply_pass);
 
   return 0;
 }
@@ -219,4 +273,13 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
   }
 
   return 0;
+}
+
+int assert_valid_code(char *code, char **valid_codes, int n) {
+	for (int i = 0; i < n; i++) {
+		if (strcmp(valid_codes[i], code) == 0) {
+			return 0;
+		}
+	}
+	return 1;
 }

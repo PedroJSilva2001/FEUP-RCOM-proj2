@@ -34,7 +34,14 @@ typedef enum {
 
 #define MAX_SIZE 1024
 
-int login(int socket_fd, ftp_client_info *info);  // USER PASS
+#define CMD_MNEM_LEN 4  // each mnemonic if 4 chars wide
+#define CRLF 2
+#define SP 1
+#define NULL_CH 1
+#define CMD_BASE_LEN (CMD_MNEM_LEN + SP + CRLF + NULL_CH)
+#define CMD_BASE_LEN_NO_PARAM (CMD_MNEM_LEN + CRLF + NULL_CH)
+
+int login(int ctrl_socket_fd, ftp_client_info *info);  // USER PASS
 
 //int enter_passive_mode(int ctrl_socket_fd);  // send PASV\r\n (without space in the middle)
 
@@ -53,5 +60,7 @@ void concat_to_reply(ftp_reply *reply, char *str, int n);
 void free_reply(ftp_reply *reply);
 
 int read_reply(int ctrl_socket_fd, ftp_reply *reply);
+
+int assert_valid_code(char *code, char **valid_codes, int n);
 
 #endif
