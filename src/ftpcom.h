@@ -40,7 +40,9 @@ int login(int socket_fd, ftp_client_info *info);  // USER PASS
 
 int retrieve(int socket_fd, ftp_client_info *info);
 
-int send_command(int socket_fd, char* message);
+int send_command(int ctrl_socket_fd, char* command);
+
+int send_command_fm(int ctrl_socket_fd, const char *format, int format_len, char *param);
 
 int save_file(int socket_fd, char* filename);
 

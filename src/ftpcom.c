@@ -56,13 +56,22 @@ int retrieve(int socket_fd, ftp_client_info *info) {
   return 0;
 }
 
-int send_command(int socket_fd, char* message) {
-    int bytes = write(socket_fd, message, strlen(message));
-    if (bytes <= 0) {
-      perror("write()");
-      return -1;
-    }
-    return 0;
+int send_command(int ctrl_socket_fd, char* command) {
+  int bytes = send(ctrl_socket_fd, command, strlen(command), 0);
+
+  if (bytes < 0) {
+    fprintf(stderr, "send: %s\n", strerror(errno));
+    return 1;
+  }
+  // TODO: maybe enforce that all bytes are sent
+  return 0;
+}
+
+int send_command_fm(int ctrl_socket_fd, const char *format, int format_len, char *param) {
+  char *command = malloc(sizeof(char) * (format_len + strlen(param)));  
+  sprintf(command, format, param);  	
+
+  return send_command(ctrl_socket_fd, command);
 }
 
 int save_file(int socket_fd, char* filename) {
