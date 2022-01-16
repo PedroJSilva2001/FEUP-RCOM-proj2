@@ -92,7 +92,13 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     dump_and_free_reply(&reply);
     return 1;
   }
-  // TODO: add if check here
+  
+  if (reply.code[0] == 5 || reply.code[0] == 4) {	
+	  printf("error: something has gone wrong in FTP communication with host while entering passive mode\n");
+    dump_and_free_reply(&reply);
+    return 1;
+  }
+
   regex_t regex;
   regmatch_t capt_groups[6];
 
