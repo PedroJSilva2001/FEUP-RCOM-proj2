@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#define FTP_CTRL_PORT "21"
+
 struct addrinfo *connected_info;
 struct addrinfo *host_addrinfos;
 
