@@ -65,7 +65,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
 	  return 1;
   }
 
-  if (reply_user.code[0] == 5 || reply_user.code[0] == 4 || strcmp(reply_user.code, "332") == 0) {	
+  if (reply_user.code[0] == '5' || reply_user.code[0] == '4' || strcmp(reply_user.code, "332") == 0) {	
 	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
     dump_and_free_reply(&reply_user);
   	return 1;
@@ -99,7 +99,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
 	  return 1;
   }
 
-  if (reply_pass.code[0] == 5 || reply_pass.code[0] == 4 || reply_pass.code[0] == 3) {	
+  if (reply_pass.code[0] == '5' || reply_pass.code[0] == '4' || reply_pass.code[0] == '3') {	
 	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
     dump_and_free_reply(&reply_pass);
     return 1;
@@ -129,7 +129,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     return 1;
   }
   
-  if (reply.code[0] == 5 || reply.code[0] == 4) {	
+  if (reply.code[0] == '5' || reply.code[0] == '4') {	
 	  printf("error: something has gone wrong in FTP communication with host while entering passive mode\n");
     dump_and_free_reply(&reply);
     return 1;
