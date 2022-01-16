@@ -47,7 +47,7 @@ int check_connection_establishment(int ctrl_socket_fd) {
 }
 
 int login(int ctrl_socket_fd, ftp_client_info *info) {
-  char *user = info->user == NULL? "anonymous" : info->user;
+  char *user = info->user == NULL ? "anonymous" : info->user;
 
   if (send_command_fmt(ctrl_socket_fd, "USER %s\r\n", CMD_BASE_LEN, user) == -1) {
     printf("error: could not send USER command to host\n");
@@ -82,7 +82,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
 
   free_reply(&reply_user);
 
-  char *pass = info->pass == NULL? " " : info->pass;
+  char *pass = info->pass == NULL ? " " : info->pass;
 
   if (send_command_fmt(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass) == -1) {
     printf("error: could not send PASS command to host\n");
@@ -153,7 +153,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     printf("host might be implementing incorrectly the FTP standard\n");
     dump_and_free_reply(&reply);
     return 1; 
-  }//227 Entering Passive Mode (193,137,29,15,207,215).
+  } // 227 Entering Passive Mode (193,137,29,15,207,215).
 
   int start = capt_groups[IP_PORT_CAPT_GROUP].rm_so;
 
@@ -170,9 +170,7 @@ int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info)
   }
 
   ftp_reply reply1;
-  
   int err = read_reply(ctrl_socket_fd, &reply1);
-
   if (err) { return err; }
   
   char *codes_retr1[8] = {"125", "150", "421", "450", "500", "501", "530", "550"};
@@ -194,9 +192,7 @@ int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info)
   free_reply(&reply1);
 
   ftp_reply reply2;
-
   err = read_reply(ctrl_socket_fd, &reply2);
-
   if (err) { return err; }
 
   char *codes_retr2[5] = {"226", "250", "425", "426", "451"};
@@ -264,9 +260,9 @@ int save_file(int data_socket_fd, char* filename) {
 }
 
 void create_reply(ftp_reply *reply) {  
-  reply->text = calloc(BASE_REPLY_LEN+1, sizeof(char));
-  memset(reply->code, 0, CODE_SIZE+1);
-  reply->real_len = BASE_REPLY_LEN+1;
+  reply->text = calloc(BASE_REPLY_LEN + 1, sizeof(char));
+  memset(reply->code, 0, CODE_SIZE + 1);
+  reply->real_len = BASE_REPLY_LEN + 1;
   reply->text_len = 0;
 }
 
@@ -275,9 +271,9 @@ void free_reply(ftp_reply *reply) {
 }
 
 void concat_to_reply(ftp_reply *reply, char *str, int n) {
-  if (reply->text_len+n >= reply->real_len) {  // >=
-    reply->text = realloc(reply->text, 2*(reply->text_len+n));
-    reply->real_len = 2*(reply->text_len+n);
+  if (reply->text_len + n >= reply->real_len) {  // >=
+    reply->text = realloc(reply->text, 2 * (reply->text_len + n));
+    reply->real_len = 2 * (reply->text_len + n);
   }
 
   strncat(reply->text, str, n);
@@ -298,8 +294,8 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
   create_reply(reply);
   ftp_reply_state reply_state = START;
 
-  char lstart[LINE_START_SIZE+1];
-  memset(lstart, 0, LINE_START_SIZE+1);
+  char lstart[LINE_START_SIZE + 1];
+  memset(lstart, 0, LINE_START_SIZE + 1);
   int start_count = 0;
 
   char buf[BASE_REPLY_LEN];
@@ -319,11 +315,11 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
 
           lstart[start_count] = buf[i];
 
-          // return error if we find more bytes after last newline 
+          // Return error if we find more bytes after last newline 
           // (violation of ftp standard)
           if (!VALID_LINE_START(lstart)) { return IMPL_ERROR; }
 
-          reply_state = LINE_SEPARATOR(lstart) == ' '?
+          reply_state = LINE_SEPARATOR(lstart) == ' ' ?
                             AWAITING_END_NEWLINE : AWAITING_NEWLINE;
           start_count = 0;
           memcpy(reply->code, lstart, CODE_SIZE);
@@ -352,27 +348,27 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
       }
 
       else if (reply_state == AWAITING_NEWLINE) {
-        int off = nl_1st_occurence_offset(&buf[i], bytes-i);
+        int off = nl_1st_occurence_offset(&buf[i], bytes - i);
 
-        // add all chars because we didnt find newline
+        // Add all chars because we didn't find newline
         if (off == -1) {
-          concat_to_reply(reply, &buf[i], bytes-i);
+          concat_to_reply(reply, &buf[i], bytes - i);
           break;
         }
 
-        // add chars up to newline
-        concat_to_reply(reply, &buf[i], off+1);
+        // Add chars up to newline
+        concat_to_reply(reply, &buf[i], off + 1);
         reply_state = AWAITING_LINE_START;
         i += off;
       }
 
       else if (reply_state == AWAITING_END_NEWLINE) {
-        int off = nl_1st_occurence_offset(&buf[i], bytes-i);
+        int off = nl_1st_occurence_offset(&buf[i], bytes - i);
 
-        if (off != -1 && i+off < bytes-1) { return IMPL_ERROR; }
+        if (off != -1 && i + off < bytes - 1) { return IMPL_ERROR; }
 
-        // add chars up to newline or end of buf (no newline was found)
-        concat_to_reply(reply, &buf[i], bytes-i);
+        // Add chars up to newline or end of buf (no newline was found)
+        concat_to_reply(reply, &buf[i], bytes - i);
 
         if (off == -1) {
           continue;

@@ -67,7 +67,7 @@ int connect_to_host(ftp_client_info *info) {
     }
   }
 
-  //don't forget to free host_addrinfos
+  // TODO: don't forget to free host_addrinfos
   // freeaddrinfo(host_addrinfos);
   return socket_fd;
 }
@@ -75,13 +75,13 @@ int connect_to_host(ftp_client_info *info) {
 char *get_client_param(regmatch_t capt_group, const char *url) {
   int start = capt_group.rm_so;
   int end = capt_group.rm_eo;
-  int size = end-start;
+  int size = end - start;
 
   if (size == 0) {
     return NULL;
   }
 
-  char *param = malloc(sizeof(char)*size+1);
+  char *param = malloc(sizeof(char) * size + 1);
 
   memcpy(param, &url[start], size);
 
@@ -93,7 +93,7 @@ char *get_client_param(regmatch_t capt_group, const char *url) {
 int parse_URL(ftp_client_info *info, const char *url) {
   regex_t regex;
   regmatch_t capt_groups[6];
-  // this regex accepts invalid paths and domain names but we don't care because we catch them later
+  // This regex accepts invalid paths and domain names, we will catch them later
   const char *pattern = "ftp://((.*):(.*)@)?([^/]+)/(.+)";
 
   #define USER_CAPT_GROUP 2
@@ -122,7 +122,6 @@ int parse_URL(ftp_client_info *info, const char *url) {
 int connect_to_host_data_port(unsigned char *ip, unsigned char *port) {
 
   struct sockaddr_in dataconn_addr;
-
   memset(&dataconn_addr, 0, sizeof(struct sockaddr_in));
 
   char ip_[16];
@@ -136,7 +135,7 @@ int connect_to_host_data_port(unsigned char *ip, unsigned char *port) {
   dataconn_addr.sin_port = htons(port[0] << 8u | port[1]);
 
   connected_info->ai_addrlen = sizeof(dataconn_addr);
-  connected_info->ai_addr = (struct sockaddr *)&dataconn_addr;
+  connected_info->ai_addr = (struct sockaddr *) &dataconn_addr;
 
   int data_socket_fd = open_connect_socket(connected_info);
   

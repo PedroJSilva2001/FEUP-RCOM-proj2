@@ -21,7 +21,7 @@ typedef struct {
   char *text;
   unsigned int real_len;
   unsigned int text_len;
-  char code[CODE_SIZE+1];
+  char code[CODE_SIZE + 1];
 } ftp_reply;
 
 typedef enum {
@@ -34,7 +34,7 @@ typedef enum {
 
 #define MAX_SIZE 1024
 
-#define CMD_MNEM_LEN 4  // each mnemonic if 4 chars wide
+#define CMD_MNEM_LEN 4  // Each mnemonic if 4 chars wide
 #define CRLF 2
 #define SP 1
 #define NULL_CH 1
