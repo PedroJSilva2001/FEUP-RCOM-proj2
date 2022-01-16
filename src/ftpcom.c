@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 int login(int ctrl_socket_fd, ftp_client_info *info) {
   char *user = info->user == NULL? "anonymous" : info->user;
@@ -29,7 +30,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
   }
 
   if (reply_user.code[0] == 5 || reply_user.code[0] == 4 || strcmp(reply_user.code, "332") == 0) {	
-	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
+	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
     dump_and_free_reply(&reply_user);
   	return 1;
   }
@@ -63,7 +64,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
   }
 
   if (reply_pass.code[0] == 5 || reply_pass.code[0] == 4 || reply_pass.code[0] == 3) {	
-	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
+	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
     dump_and_free_reply(&reply_pass);
     return 1;
   }
@@ -91,7 +92,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     dump_and_free_reply(&reply);
     return 1;
   }
-
+  // TODO: add if check here
   regex_t regex;
   regmatch_t capt_groups[6];
 
@@ -120,9 +121,55 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
   return 0;
 }
 
-int retrieve(int socket_fd, ftp_client_info *info) {
-  
+int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info) {
+  if (send_command_fmt(ctrl_socket_fd, "RETR %s\r\n", CMD_BASE_LEN, info->path)) {
+    printf("error: could not send PASV command to host\n");
+    return 1;
+  }
 
+  ftp_reply reply1;
+  
+  int err = read_reply(ctrl_socket_fd, &reply1);
+
+  if (err) { return err; }
+  
+  char *codes_retr1[8] = {"125", "150", "421", "450", "500", "501", "530", "550"};
+
+  if (assert_valid_code(reply1.code, codes_retr1, 8)) {
+    dump_and_free_reply(&reply1);
+	  return 1;
+  }
+
+  if (reply1.code[0] == '4' || reply1.code[0] == '5') {
+    printf("error: something has gone wrong in FTP communication with host while retrieving file\n");
+    dump_and_free_reply(&reply1);
+  }
+
+  if (save_file(data_socket_fd, basename(info->path))) {
+    return 1;
+  }
+
+  free_reply(&reply1);
+
+  ftp_reply reply2;
+
+  err = read_reply(ctrl_socket_fd, &reply2);
+
+  if (err) { return err; }
+
+  char *codes_retr2[5] = {"226", "250", "425", "426", "451"};
+
+  if (assert_valid_code(reply2.code, codes_retr2, 5)) {
+    dump_and_free_reply(&reply2);
+	  return 1;
+  }
+
+  if (reply1.code[0] == '4') {
+    printf("error: something has gone wrong in FTP communication with host while retrieving file\n");
+    dump_and_free_reply(&reply2);
+  }
+
+  free_reply(&reply2);
   return 0;
 }
 
@@ -139,7 +186,7 @@ int send_command(int ctrl_socket_fd, char* command) {
 
 int send_command_fmt(int ctrl_socket_fd, const char *format, int format_len, char *param) {
   char *command = malloc(sizeof(char) * (format_len + strlen(param)));  
-  sprintf(command, format, param);  	
+  sprintf(command, format, param);
 
   int err = send_command(ctrl_socket_fd, command);
 
@@ -148,19 +195,22 @@ int send_command_fmt(int ctrl_socket_fd, const char *format, int format_len, cha
   return err;
 }
 
-int save_file(int socket_fd, char* filename) {
+int save_file(int data_socket_fd, char* filename) {
   int file_fd = open(filename, O_WRONLY | O_CREAT, 0777);
 
-  if (file_fd < 0)
-    return -1;
+  if (file_fd < 0) {
+    return 1;
+  }
 
-  int bytes;
+  ssize_t bytes;
   char buf[MAX_SIZE];
 
-  while ((bytes = read(socket_fd, buf, sizeof(buf))) > 0) {
-      if (write(file_fd, buf, bytes) < 0) {
-        return -1;
-      }
+  while ((bytes = recv(data_socket_fd, buf, MAX_SIZE, 0)) > 0) {
+    if (write(file_fd, buf, bytes) < 0) {  // TODO: check if nr bytes read is same as nr bytes saved
+      fprintf(stderr, "socket: %s\n", strerror(errno));
+      close(file_fd);
+      return 1;
+    }
   }
 
   close(file_fd);
@@ -304,5 +354,5 @@ int assert_valid_code(char *code, char **valid_codes, int n) {
 
 void dump_and_free_reply(ftp_reply *reply) {
   printf("reply sent from host:\n%s", reply->text);
-  free_reply(&reply);
+  free_reply(reply);
 }

@@ -45,13 +45,13 @@ int login(int ctrl_socket_fd, ftp_client_info *info);  // USER PASS
 
 int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *port);
 
-int retrieve(int socket_fd, ftp_client_info *info);
+int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info);
 
 int send_command(int ctrl_socket_fd, char* command);
 
 int send_command_fmt(int ctrl_socket_fd, const char *format, int format_len, char *param);
 
-int save_file(int socket_fd, char* filename);
+int save_file(int data_socket_fd, char* filename);
 
 void create_reply(ftp_reply *reply);
 
@@ -63,6 +63,6 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply);
 
 int assert_valid_code(char *code, char **valid_codes, int n);
 
-void dump_and_free(ftp_reply *reply);
+void dump_and_free_reply(ftp_reply *reply);
 
 #endif
