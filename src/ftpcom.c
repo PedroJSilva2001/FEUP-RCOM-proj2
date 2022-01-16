@@ -10,6 +10,42 @@
 #include <fcntl.h>
 #include <libgen.h>
 
+int check_connection_establishment(int ctrl_socket_fd) {
+  ftp_reply reply;
+
+  char *codes[3] = {"120", "220", "421"};
+
+  while (1) {
+    int err = read_reply(ctrl_socket_fd, &reply);
+    
+    if (err) { return 1; }
+
+    if (assert_valid_code(reply.code, codes, 3)) {
+      dump_and_free_reply(&reply);
+	    return 1;
+    }
+
+    switch (reply.code[0]) {
+      case '1':
+        printf("warning: service isn't ready right away; please wait\n");
+        dump_and_free_reply(&reply);
+      break;
+
+      case '2':
+        return 0;
+      break;
+
+      case '4':
+	      printf("error: something has gone wrong in FTP communication with host\n");
+        dump_and_free_reply(&reply);
+        return 1;
+      break;
+    }
+  }
+
+  return 0;
+}
+
 int login(int ctrl_socket_fd, ftp_client_info *info) {
   char *user = info->user == NULL? "anonymous" : info->user;
 
