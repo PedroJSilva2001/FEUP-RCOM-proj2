@@ -2,6 +2,8 @@
 #include "ftpconn.h"
 
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 int main(int argc, const char *argv[]) {
   if (argc != 2) {
@@ -25,42 +27,51 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  printf("Connection established.\n");
-
-  if (login(ctrl_socket_fd, &info) == -1) {
-    printf("error: couldn't login\n");
+  if (check_connection_establishment(ctrl_socket_fd)) {
     return 1;
   }
 
-  printf("Logged in.\n");
+  printf("Connection established to host.\n");
 
-  if (enter_passive_mode(ctrl_socket_fd) == -1) {
+  if (login(ctrl_socket_fd, &info)) {
+    printf("error: couldn't log in\n");
+    return 1;
+  }
+
+  printf("Logged in successfuly.\n");
+
+  unsigned char ip[4];
+  unsigned char port[2];
+
+  if (enter_passive_mode(ctrl_socket_fd, ip, port) == -1) {
     printf("error: couldn't enter passive mode\n");
     return 1;
   }
 
-  printf("Entered passive mode.\n");
+  int data_socket_fd = connect_to_host_data_port(ip, port);
 
-  if (retrieve(ctrl_socket_fd, &info) == -1) {
-    printf("error: couldn't retrieve\n");
-    return 1;
+  if (data_socket_fd == -1) {
+    printf("error: couldn't connect to host data port\n");
   }
 
-  printf("File retrived.\n");
+  printf("Entered passive mode.\n");
 
-  if (save_file(ctrl_socket_fd, "oi") == -1) {  // TODO: COMPLETE?
-    printf("error: couldn't save file\n");
+  if (retrieve_file(ctrl_socket_fd, data_socket_fd, &info) == -1) {
+    printf("error: couldn't retrieve file successfully\n");
     return 1;
   }
 
   printf("File saved successfully.\n");
 
-  if (disconnect(ctrl_socket_fd) == -1) {
-    printf("error: couldn't disconnect\n");
-    return 1;
-  }
+  disconnect(ctrl_socket_fd);
 
-  printf("Disconnected successfully.\n");
+  close(ctrl_socket_fd);
+  close(data_socket_fd);
+
+  free(info.user);
+  free(info.pass);
+  free(info.host);
+  free(info.path);
 
   return 0;
 }
