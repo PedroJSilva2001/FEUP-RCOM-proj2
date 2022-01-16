@@ -6,16 +6,6 @@
 #include <stdio.h>
 
 #define CODE_SIZE 3
-#define LINE_START_SIZE 4
-#define BASE_REPLY_LEN 100
-#define SERVER_DISC 1
-#define READ_ERROR 2
-#define IMPL_ERROR 3
-
-#define LINE_SEPARATOR(line) (line[3])
-#define VALID_LINE_START(line) isdigit(line[0]) && isdigit(line[1]) \
-                               && isdigit(line[2]) && (line[3] == ' ' \
-                               || line[3] == '-')
 
 typedef struct {
   char *text;
@@ -32,16 +22,7 @@ typedef enum {
   AWAITING_END_NEWLINE,
 } ftp_reply_state;
 
-#define MAX_SIZE 1024
-
-#define CMD_MNEM_LEN 4  // each mnemonic if 4 chars wide
-#define CRLF 2
-#define SP 1
-#define NULL_CH 1
-#define CMD_BASE_LEN (CMD_MNEM_LEN + SP + CRLF + NULL_CH)
-#define CMD_BASE_LEN_NO_PARAM (CMD_MNEM_LEN + CRLF + NULL_CH)
-
-int login(int ctrl_socket_fd, ftp_client_info *info);  // USER PASS
+int login(int ctrl_socket_fd, ftp_client_info *info);
 
 int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *port);
 

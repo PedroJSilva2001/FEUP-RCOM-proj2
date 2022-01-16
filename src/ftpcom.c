@@ -10,6 +10,26 @@
 #include <fcntl.h>
 #include <libgen.h>
 
+#define LINE_START_LEN 4
+#define REPLY_BASE_LEN 100
+#define SERVER_DISC 1
+#define READ_ERROR 2
+#define IMPL_ERROR 3
+
+#define LINE_SEPARATOR(line) (line[3])
+#define VALID_LINE_START(line) isdigit(line[0]) && isdigit(line[1]) \
+                               && isdigit(line[2]) && (line[3] == ' ' \
+                               || line[3] == '-')
+
+#define FILE_RW_SIZE 1024
+
+#define CMD_MNEM_LEN 4  // each mnemonic is 4 chars wide
+#define CRLF 2
+#define SP 1
+#define NULL_CH 1
+#define CMD_BASE_LEN (CMD_MNEM_LEN + SP + CRLF + NULL_CH)
+#define CMD_BASE_LEN_NO_PARAM (CMD_MNEM_LEN + CRLF + NULL_CH)
+
 int check_connection_establishment(int ctrl_socket_fd) {
   ftp_reply reply;
 
@@ -119,7 +139,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
   ftp_reply reply;
   
   int err = read_reply(ctrl_socket_fd, &reply);
-  printf("%s", reply.text);
+
   if (err) { return err; }
 
   char *codes_pasv[6] = {"227", "421", "500", "501", "502", "530"};
@@ -153,7 +173,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     printf("host might be implementing incorrectly the FTP standard\n");
     dump_and_free_reply(&reply);
     return 1; 
-  }//227 Entering Passive Mode (193,137,29,15,207,215).
+  }
 
   int start = capt_groups[IP_PORT_CAPT_GROUP].rm_so;
 
@@ -249,9 +269,9 @@ int save_file(int data_socket_fd, char* filename) {
   }
 
   ssize_t bytes;
-  char buf[MAX_SIZE];
+  char buf[FILE_RW_SIZE];
 
-  while ((bytes = recv(data_socket_fd, buf, MAX_SIZE, 0)) > 0) {
+  while ((bytes = recv(data_socket_fd, buf, FILE_RW_SIZE, 0)) > 0) {
     if (write(file_fd, buf, bytes) < 0) {  // TODO: check if nr bytes read is same as nr bytes saved
       fprintf(stderr, "socket: %s\n", strerror(errno));
       close(file_fd);
@@ -264,9 +284,9 @@ int save_file(int data_socket_fd, char* filename) {
 }
 
 void create_reply(ftp_reply *reply) {  
-  reply->text = calloc(BASE_REPLY_LEN+1, sizeof(char));
+  reply->text = calloc(REPLY_BASE_LEN+1, sizeof(char));
   memset(reply->code, 0, CODE_SIZE+1);
-  reply->real_len = BASE_REPLY_LEN+1;
+  reply->real_len = REPLY_BASE_LEN+1;
   reply->text_len = 0;
 }
 
@@ -298,16 +318,16 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
   create_reply(reply);
   ftp_reply_state reply_state = START;
 
-  char lstart[LINE_START_SIZE+1];
-  memset(lstart, 0, LINE_START_SIZE+1);
+  char lstart[LINE_START_LEN+1];
+  memset(lstart, 0, LINE_START_LEN+1);
   int start_count = 0;
 
-  char buf[BASE_REPLY_LEN];
+  char buf[REPLY_BASE_LEN];
 
   while (reply_state != REPLY_COMPLETE) {
-    memset(buf, 0, BASE_REPLY_LEN);
+    memset(buf, 0, REPLY_BASE_LEN);
 
-    int bytes = recv(ctrl_socket_fd, buf, BASE_REPLY_LEN, 0);
+    int bytes = recv(ctrl_socket_fd, buf, REPLY_BASE_LEN, 0);
 
     if (bytes == 0) { return SERVER_DISC; }
 
@@ -387,6 +407,11 @@ int read_reply(int ctrl_socket_fd, ftp_reply *reply) {
   return 0;
 }
 
+void dump_and_free_reply(ftp_reply *reply) {
+  printf("reply sent from host:\n%s", reply->text);
+  free_reply(reply);
+}
+
 int assert_valid_code(char *code, char **valid_codes, int n) {
 	for (int i = 0; i < n; i++) {
 		if (strcmp(valid_codes[i], code) == 0) {
@@ -396,9 +421,4 @@ int assert_valid_code(char *code, char **valid_codes, int n) {
   printf("error: host has sent a reply that does not match any valid one expected; ");
   printf("host might be implementing incorrectly the FTP standard\n");
 	return 1;
-}
-
-void dump_and_free_reply(ftp_reply *reply) {
-  printf("reply sent from host:\n%s", reply->text);
-  free_reply(reply);
 }

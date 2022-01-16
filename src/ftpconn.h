@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <regex.h>
 
-#define FTP_CTRL_PORT "21"
-
 typedef struct {
   char *user;
   char *pass;
