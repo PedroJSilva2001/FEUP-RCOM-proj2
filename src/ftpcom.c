@@ -215,6 +215,10 @@ int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info)
   return 0;
 }
 
+void disconnect(int ctrl_socket_fd) {
+  send_command(ctrl_socket_fd, "QUIT\r\n");
+}
+
 int send_command(int ctrl_socket_fd, char* command) {
   int bytes = send(ctrl_socket_fd, command, strlen(command), 0);
 

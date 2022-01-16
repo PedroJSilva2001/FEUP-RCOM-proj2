@@ -119,11 +119,6 @@ int parse_URL(ftp_client_info *info, const char *url) {
   return 0;
 }
 
-int disconnect(int socket_fd) {
-  return send_command(socket_fd, "quit\n");
-}
-
-
 int connect_to_host_data_port(unsigned char *ip, unsigned char *port) {
 
   struct sockaddr_in dataconn_addr;

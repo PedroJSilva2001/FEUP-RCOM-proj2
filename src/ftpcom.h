@@ -66,4 +66,7 @@ int assert_valid_code(char *code, char **valid_codes, int n);
 void dump_and_free_reply(ftp_reply *reply);
 
 int check_connection_establishment(int ctrl_socket_fd);
+
+void disconnect(int ctrl_socket_fd);
+
 #endif
