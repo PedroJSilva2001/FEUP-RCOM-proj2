@@ -30,9 +30,9 @@
 #define CMD_BASE_LEN (CMD_MNEM_LEN + SP + CRLF + NULL_CH)
 #define CMD_BASE_LEN_NO_PARAM (CMD_MNEM_LEN + CRLF + NULL_CH)
 
-int check_connection_establishment(int ctrl_socket_fd) {
-  ftp_reply reply;
+static ftp_reply reply;
 
+int check_connection_establishment(int ctrl_socket_fd) {
   char *codes[3] = {"120", "220", "421"};
 
   while (1) {
@@ -40,10 +40,7 @@ int check_connection_establishment(int ctrl_socket_fd) {
     
     if (err) { return 1; }
 
-    if (assert_valid_code(reply.code, codes, 3)) {
-      dump_and_free_reply(&reply);
-	    return 1;
-    }
+    if (assert_valid_code(reply.code, codes, 3)) { return 1; }
 
     switch (reply.code[0]) {
       case '1':
@@ -74,58 +71,53 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
 	  return 1;
   }
  
-  ftp_reply reply_user;
-  int err = read_reply(ctrl_socket_fd, &reply_user);
+  int err = read_reply(ctrl_socket_fd, &reply);
   if (err) { return err; }
 
   char *codes_user[7] = {"230", "331", "332", "421", "500", "501", "530"};
 
-  if (assert_valid_code(reply_user.code, codes_user, 7)) {
-    dump_and_free_reply(&reply_user);
-	  return 1;
-  }
+  if (assert_valid_code(reply.code, codes_user, 7)) { return 1; }
 
-  if (reply_user.code[0] == '5' || reply_user.code[0] == '4' || strcmp(reply_user.code, "332") == 0) {	
+  if (reply.code[0] == '5' || reply.code[0] == '4' || strcmp(reply.code, "332") == 0) {	
 	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
-    dump_and_free_reply(&reply_user);
+    dump_and_free_reply(&reply);
   	return 1;
   }
 
-  if (strcmp(reply_user.code, "230") == 0) {
+  if (strcmp(reply.code, "230") == 0) {
     if (info->pass != NULL) {
       printf("warning: a password was specified by user but not needed for log in\n");
     }
 
-    free_reply(&reply_user);
+    free_reply(&reply);
 	  return 0;
   }
 
-  free_reply(&reply_user);
+  free_reply(&reply);
 
   char *pass = info->pass == NULL? " " : info->pass;
 
-  if (send_command_fmt(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass) == -1) {
+  if (send_command_fmt(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass)) {
     printf("error: could not send PASS command to host\n");
   }
 
-  ftp_reply reply_pass;
-  err = read_reply(ctrl_socket_fd, &reply_pass);
+  err = read_reply(ctrl_socket_fd, &reply);
+ 
   if (err) { return err; }
 
   char *codes_pass[8] = {"202", "230", "332", "421", "500", "501", "503", "530"};
 
-  if (assert_valid_code(reply_pass.code, codes_pass, 8)) {
-    dump_and_free_reply(&reply_pass);
+  if (assert_valid_code(reply.code, codes_pass, 8)) {
 	  return 1;
   }
 
-  if (reply_pass.code[0] == '5' || reply_pass.code[0] == '4' || reply_pass.code[0] == '3') {	
+  if (reply.code[0] == '5' || reply.code[0] == '4' || reply.code[0] == '3') {	
 	  printf("error: something has gone wrong in FTP communication with host while logging in\n");
-    dump_and_free_reply(&reply_pass);
+    dump_and_free_reply(&reply);
     return 1;
   }
 
-  free_reply(&reply_pass);
+  free_reply(&reply);
 
   return 0;
 }
@@ -135,8 +127,6 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     printf("error: could not send PASV command to host\n");
     return 1;
   }
-
-  ftp_reply reply;
   
   int err = read_reply(ctrl_socket_fd, &reply);
 
@@ -144,10 +134,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
 
   char *codes_pasv[6] = {"227", "421", "500", "501", "502", "530"};
 
-  if (assert_valid_code(reply.code, codes_pasv, 6)) {
-    dump_and_free_reply(&reply);
-    return 1;
-  }
+  if (assert_valid_code(reply.code, codes_pasv, 6)) { return 1; }
   
   if (reply.code[0] == '5' || reply.code[0] == '4') {	
 	  printf("error: something has gone wrong in FTP communication with host while entering passive mode\n");
@@ -188,50 +175,38 @@ int retrieve_file(int ctrl_socket_fd, int data_socket_fd, ftp_client_info *info)
     printf("error: could not send PASV command to host\n");
     return 1;
   }
-
-  ftp_reply reply1;
   
-  int err = read_reply(ctrl_socket_fd, &reply1);
+  int err = read_reply(ctrl_socket_fd, &reply);
 
   if (err) { return err; }
   
   char *codes_retr1[8] = {"125", "150", "421", "450", "500", "501", "530", "550"};
 
-  if (assert_valid_code(reply1.code, codes_retr1, 8)) {
-    dump_and_free_reply(&reply1);
-	  return 1;
-  }
+  if (assert_valid_code(reply.code, codes_retr1, 8)) { return 1; }
 
-  if (reply1.code[0] == '4' || reply1.code[0] == '5') {
+  if (reply.code[0] == '4' || reply.code[0] == '5') {
     printf("error: something has gone wrong in FTP communication with host while retrieving file\n");
-    dump_and_free_reply(&reply1);
+    dump_and_free_reply(&reply);
   }
 
-  if (save_file(data_socket_fd, basename(info->path))) {
-    return 1;
-  }
+  if (save_file(data_socket_fd, basename(info->path))) { return 1; }
 
-  free_reply(&reply1);
+  free_reply(&reply);
 
-  ftp_reply reply2;
-
-  err = read_reply(ctrl_socket_fd, &reply2);
+  err = read_reply(ctrl_socket_fd, &reply);
 
   if (err) { return err; }
 
   char *codes_retr2[5] = {"226", "250", "425", "426", "451"};
 
-  if (assert_valid_code(reply2.code, codes_retr2, 5)) {
-    dump_and_free_reply(&reply2);
-	  return 1;
-  }
+  if (assert_valid_code(reply.code, codes_retr2, 5)) { return 1; }
 
-  if (reply1.code[0] == '4') {
+  if (reply.code[0] == '4') {
     printf("error: something has gone wrong in FTP communication with host while retrieving file\n");
-    dump_and_free_reply(&reply2);
+    dump_and_free_reply(&reply);
   }
 
-  free_reply(&reply2);
+  free_reply(&reply);
   return 0;
 }
 
@@ -295,7 +270,7 @@ void free_reply(ftp_reply *reply) {
 }
 
 void concat_to_reply(ftp_reply *reply, char *str, int n) {
-  if (reply->text_len+n >= reply->real_len) {  // >=
+  if (reply->text_len+n >= reply->real_len) {
     reply->text = realloc(reply->text, 2*(reply->text_len+n));
     reply->real_len = 2*(reply->text_len+n);
   }
@@ -418,7 +393,9 @@ int assert_valid_code(char *code, char **valid_codes, int n) {
 			return 0;
 		}
 	}
+
   printf("error: host has sent a reply that does not match any valid one expected; ");
   printf("host might be implementing incorrectly the FTP standard\n");
+  dump_and_free_reply(&reply);
 	return 1;
 }
