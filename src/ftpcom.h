@@ -7,6 +7,9 @@
 
 #define CODE_SIZE 3
 
+/**
+ * Reply.
+ **/
 typedef struct {
   char *text;
   unsigned int real_len;
@@ -14,6 +17,9 @@ typedef struct {
   char code[CODE_SIZE + 1];
 } ftp_reply;
 
+/**
+ * State machine to process replies.
+ **/
 typedef enum {
   START,
   AWAITING_LINE_START,
