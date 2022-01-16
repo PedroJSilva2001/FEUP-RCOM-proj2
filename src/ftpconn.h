@@ -19,12 +19,12 @@ struct addrinfo *host_IPaddrinfos(char *host, char *port);
 
 int connect_to_host(ftp_client_info *info);
 
-char *host_data_port(char *socket_addr);
-
 char *get_client_param(regmatch_t capt_group, const char *url);
 
 int parse_URL(ftp_client_info *info, const char *url);
 
 int disconnect(int socket_fd);
+
+int connect_to_host_data_port(unsigned char *ip, unsigned char *port);
 
 #endif

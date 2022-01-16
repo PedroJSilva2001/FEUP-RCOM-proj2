@@ -9,8 +9,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+struct addrinfo *connected_info;
+struct addrinfo *host_addrinfos;
+
 int open_connect_socket(struct addrinfo *addr) {
-  int socket_fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+  int socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if (socket_fd < 0) {
     fprintf(stderr, "socket: %s\n", strerror(errno));
@@ -49,7 +52,7 @@ struct addrinfo *host_IPaddrinfos(char *host, char *port) {
 
 int connect_to_host(ftp_client_info *info) {
   int socket_fd = -1;
-  struct addrinfo *host_addrinfos = host_IPaddrinfos(info->host, FTP_CTRL_PORT);
+  host_addrinfos = host_IPaddrinfos(info->host, FTP_CTRL_PORT);
 
   if (host_addrinfos == NULL) {
     fprintf(stderr, "error: couldn't find host IP socket address\n");
@@ -59,6 +62,7 @@ int connect_to_host(ftp_client_info *info) {
   for (struct addrinfo *p = host_addrinfos; p != NULL; p = p->ai_next) {
     socket_fd = open_connect_socket(p);
     if (socket_fd != -1) {
+      connected_info = p;
       break;
     }
   }
@@ -67,13 +71,6 @@ int connect_to_host(ftp_client_info *info) {
   // freeaddrinfo(host_addrinfos);
   return socket_fd;
 }
-
-char *host_data_port(char *socket_addr) {  //PASSIVE
-  //TODO: parse socket_addr, get port MSB AND LSB,
-  // and return (MSB << 8u | LSB) as string
-  return NULL;
-}
-
 
 char *get_client_param(regmatch_t capt_group, const char *url) {
   int start = capt_group.rm_so;
@@ -124,4 +121,31 @@ int parse_URL(ftp_client_info *info, const char *url) {
 
 int disconnect(int socket_fd) {
   return send_command(socket_fd, "quit\n");
+}
+
+
+int connect_to_host_data_port(unsigned char *ip, unsigned char *port) {
+
+  struct sockaddr_in dataconn_addr;
+
+  memset(&dataconn_addr, 0, sizeof(struct sockaddr_in));
+
+  char ip_[16];
+  sprintf(ip_, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+
+  //printf("port = %d %d\n", port[0], port[1] );
+  //printf("port = %d\n", port[0] << 8 | port[1] );
+  dataconn_addr.sin_family = AF_INET;
+  inet_aton(ip_, &dataconn_addr.sin_addr);
+  //dataconn_addr.sin_addr.s_addr = inet_addr(ip_);
+  dataconn_addr.sin_port = htons(port[0] << 8u | port[1]);
+
+  connected_info->ai_addrlen = sizeof(dataconn_addr);
+  connected_info->ai_addr = (struct sockaddr *)&dataconn_addr;
+
+  int data_socket_fd = open_connect_socket(connected_info);
+  
+  freeaddrinfo(host_addrinfos);
+
+  return data_socket_fd;
 }
