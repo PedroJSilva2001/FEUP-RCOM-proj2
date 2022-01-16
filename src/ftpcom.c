@@ -12,29 +12,25 @@
 int login(int ctrl_socket_fd, ftp_client_info *info) {
   char *user = info->user == NULL? "anonymous" : info->user;
 
-  if (send_command_fm(ctrl_socket_fd, "USER %s\r\n", CMD_BASE_LEN, user) == -1) {
+  if (send_command_fmt(ctrl_socket_fd, "USER %s\r\n", CMD_BASE_LEN, user) == -1) {
     printf("error: could not send USER command to host\n");
 	  return 1;
   }
  
   ftp_reply reply_user;
   int err = read_reply(ctrl_socket_fd, &reply_user);
-  printf("%s", reply_user.text);
   if (err) { return err; }
 
   char *codes_user[7] = {"230", "331", "332", "421", "500", "501", "530"};
 
   if (assert_valid_code(reply_user.code, codes_user, 7)) {
-    printf("error: host has sent a reply that does not match any valid one expected; host might be implementing incorrectly the FTP standard\n");
-    printf("reply sent from host:\n%s", reply_user.text);
-    free_reply(&reply_user);
+    dump_and_free_reply(&reply_user);
 	  return 1;
   }
 
   if (reply_user.code[0] == 5 || reply_user.code[0] == 4 || strcmp(reply_user.code, "332") == 0) {	
 	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
-    printf("reply sent from host:\n%s", reply_user.text);
-    free_reply(&reply_user);
+    dump_and_free_reply(&reply_user);
   	return 1;
   }
 
@@ -42,6 +38,7 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
     if (info->pass != NULL) {
       printf("warning: a password was specified by user but not needed for log in\n");
     }
+
     free_reply(&reply_user);
 	  return 0;
   }
@@ -50,30 +47,24 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
 
   char *pass = info->pass == NULL? " " : info->pass;
 
-  if (send_command_fm(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass) == -1) {
+  if (send_command_fmt(ctrl_socket_fd, "PASS %s\r\n", CMD_BASE_LEN, pass) == -1) {
     printf("error: could not send PASS command to host\n");
   }
 
   ftp_reply reply_pass;
   err = read_reply(ctrl_socket_fd, &reply_pass);
-  printf("%s", reply_pass.text);
   if (err) { return err; }
-
 
   char *codes_pass[8] = {"202", "230", "332", "421", "500", "501", "503", "530"};
 
   if (assert_valid_code(reply_pass.code, codes_pass, 8)) {
-    printf("error: host has sent a reply that does not match any valid one expected; host might be implementing incorrectly the FTP standard\n");
-    printf("reply sent from host:\n%s", reply_pass.text);
-    free_reply(&reply_pass);
+    dump_and_free_reply(&reply_pass);
 	  return 1;
   }
 
-  
   if (reply_pass.code[0] == 5 || reply_pass.code[0] == 4 || reply_pass.code[0] == 3) {	
 	  printf("error: something has gone wrong in FTP comunication with host while logging in\n");
-    printf("reply sent from host:\n%s", reply_pass.text);
-    free_reply(&reply_pass);
+    dump_and_free_reply(&reply_pass);
     return 1;
   }
 
@@ -82,30 +73,55 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
   return 0;
 }
 
-int enter_passive_mode(int socket_fd) {
-  // TODO
-  if (send_command(socket_fd, "pasv\r\n")) return 1;
+int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *port) {
+  if (send_command(ctrl_socket_fd, "PASV\r\n")) {
+    printf("error: could not send PASV command to host\n");
+    return 1;
+  }
 
-  // TODO: RESPONSE READ -> resulta num buf
+  ftp_reply reply;
+  
+  int err = read_reply(ctrl_socket_fd, &reply);
+  printf("%s", reply.text);
+  if (err) { return err; }
 
-  // PORT h1,h2,h3,h4,p1,p2
-  int ip[4], ports[2];
+  char *codes_pasv[6] = {"227", "421", "500", "501", "502", "530"};
 
-  //if (scanf(buf, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d).", &ip[0], &ip[1], &ip[2], &ip[3], &ports[0], &ports[1]) < 0) return -1;
+  if (assert_valid_code(reply.code, codes_pasv, 6)) {
+    dump_and_free_reply(&reply);
+    return 1;
+  }
 
-  int port = ports[0] * 256 + ports[1];
+  regex_t regex;
+  regmatch_t capt_groups[6];
 
-  // TODO: CONNECT SOCKET
+  const char *pattern = "\((((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?),){5}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\)";
+
+  #define IP_PORT_CAPT_GROUP 2
+
+  regcomp(&regex, pattern, REG_EXTENDED);
+
+  int res = regexec(&regex, reply.text, 6, capt_groups, 0);
+
+  regfree(&regex);
+
+  if (res != 0) { 
+    printf("error: could not find ip address and port for data connection in host reply\n");
+    printf("host might be implementing incorrectly the FTP standard\n");
+    dump_and_free_reply(&reply);
+    return 1; 
+  }//227 Entering Passive Mode (193,137,29,15,207,215).
+
+  int start = capt_groups[IP_PORT_CAPT_GROUP].rm_so;
+
+  sscanf(&reply.text[start], "%hhu,%hhu,%hhu,%hhu,%hhu,%hhu", &ip[0], &ip[1], &ip[2], &ip[3], &port[0], &port[1]);
+
+  free_reply(&reply);
   return 0;
 }
 
 int retrieve(int socket_fd, ftp_client_info *info) {
-  char command[MAX_SIZE];
-  sprintf(command, "retr %s\r\n", info->path);
-
-  if (send_command(socket_fd, command)) return -1;
-
-  // TODO: RESPONSE READ
+  
 
   return 0;
 }
@@ -121,7 +137,7 @@ int send_command(int ctrl_socket_fd, char* command) {
   return 0;
 }
 
-int send_command_fm(int ctrl_socket_fd, const char *format, int format_len, char *param) {
+int send_command_fmt(int ctrl_socket_fd, const char *format, int format_len, char *param) {
   char *command = malloc(sizeof(char) * (format_len + strlen(param)));  
   sprintf(command, format, param);  	
 
@@ -281,5 +297,12 @@ int assert_valid_code(char *code, char **valid_codes, int n) {
 			return 0;
 		}
 	}
+  printf("error: host has sent a reply that does not match any valid one expected; ");
+  printf("host might be implementing incorrectly the FTP standard\n");
 	return 1;
+}
+
+void dump_and_free_reply(ftp_reply *reply) {
+  printf("reply sent from host:\n%s", reply->text);
+  free_reply(&reply);
 }

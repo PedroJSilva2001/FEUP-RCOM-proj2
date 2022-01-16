@@ -43,13 +43,13 @@ typedef enum {
 
 int login(int ctrl_socket_fd, ftp_client_info *info);  // USER PASS
 
-//int enter_passive_mode(int ctrl_socket_fd);  // send PASV\r\n (without space in the middle)
+int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *port);
 
 int retrieve(int socket_fd, ftp_client_info *info);
 
 int send_command(int ctrl_socket_fd, char* command);
 
-int send_command_fm(int ctrl_socket_fd, const char *format, int format_len, char *param);
+int send_command_fmt(int ctrl_socket_fd, const char *format, int format_len, char *param);
 
 int save_file(int socket_fd, char* filename);
 
@@ -62,5 +62,7 @@ void free_reply(ftp_reply *reply);
 int read_reply(int ctrl_socket_fd, ftp_reply *reply);
 
 int assert_valid_code(char *code, char **valid_codes, int n);
+
+void dump_and_free(ftp_reply *reply);
 
 #endif
