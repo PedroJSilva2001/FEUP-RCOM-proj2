@@ -11,11 +11,8 @@
 
 #define FTP_CTRL_PORT "21"
 
-struct addrinfo *connected_info;
-struct addrinfo *host_addrinfos;
-
 int open_connect_socket(struct addrinfo *addr) {
-  int socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  int socket_fd = socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP);
 
   if (socket_fd < 0) {
     fprintf(stderr, "socket: %s\n", strerror(errno));
@@ -28,7 +25,7 @@ int open_connect_socket(struct addrinfo *addr) {
     return -1;
   }
 
-  return socket_fd;  
+  return socket_fd;
 }
 
 struct addrinfo *host_IPaddrinfos(char *host, char *port) {
@@ -54,23 +51,21 @@ struct addrinfo *host_IPaddrinfos(char *host, char *port) {
 
 int connect_to_host(ftp_client_info *info) {
   int socket_fd = -1;
-  host_addrinfos = host_IPaddrinfos(info->host, FTP_CTRL_PORT);
+
+  struct addrinfo *host_addrinfos = host_IPaddrinfos(info->host, FTP_CTRL_PORT);
 
   if (host_addrinfos == NULL) {
     fprintf(stderr, "error: couldn't find host IP socket address\n");
     return -1;
   }
 
-  for (struct addrinfo *p = host_addrinfos; p != NULL; p = p->ai_next) {
-    socket_fd = open_connect_socket(p);
-    if (socket_fd != -1) {
-      connected_info = p;
-      break;
-    }
+  for (struct addrinfo *a = host_addrinfos; a != NULL; a = a->ai_next) {
+    socket_fd = open_connect_socket(a);
+
+    if (socket_fd != -1) { break; }
   }
 
-  // TODO: don't forget to free host_addrinfos
-  // freeaddrinfo(host_addrinfos);
+  freeaddrinfo(host_addrinfos);
   return socket_fd;
 }
 
@@ -79,9 +74,7 @@ char *get_client_param(regmatch_t capt_group, const char *url) {
   int end = capt_group.rm_eo;
   int size = end - start;
 
-  if (size == 0) {
-    return NULL;
-  }
+  if (size == 0) { return NULL; }
 
   char *param = malloc(sizeof(char) * size + 1);
 
@@ -96,7 +89,7 @@ int parse_URL(ftp_client_info *info, const char *url) {
   regex_t regex;
   regmatch_t capt_groups[6];
   // This regex accepts invalid paths and domain names, we will catch them later
-  const char *pattern = "ftp://((.*):(.*)@)?([^/]+)/(.+)";
+  const char *pattern = "^ftp://((.*):(.*)@)?([^/]+)/(.+)";
 
   #define USER_CAPT_GROUP 2
   #define PASS_CAPT_GROUP 3
@@ -109,9 +102,7 @@ int parse_URL(ftp_client_info *info, const char *url) {
 
   regfree(&regex);
 
-  if (res != 0) {
-    return 1;
-  }
+  if (res != 0) { return 1; }
 
   info->user = get_client_param(capt_groups[USER_CAPT_GROUP], url);
   info->pass = get_client_param(capt_groups[PASS_CAPT_GROUP], url);
@@ -122,26 +113,28 @@ int parse_URL(ftp_client_info *info, const char *url) {
 }
 
 int connect_to_host_data_port(unsigned char *ip, unsigned char *port) {
-
   struct sockaddr_in dataconn_addr;
   memset(&dataconn_addr, 0, sizeof(struct sockaddr_in));
 
   char ip_[16];
   sprintf(ip_, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 
-  //printf("port = %d %d\n", port[0], port[1] );
-  //printf("port = %d\n", port[0] << 8 | port[1] );
   dataconn_addr.sin_family = AF_INET;
   inet_aton(ip_, &dataconn_addr.sin_addr);
-  //dataconn_addr.sin_addr.s_addr = inet_addr(ip_);
   dataconn_addr.sin_port = htons(port[0] << 8u | port[1]);
 
-  connected_info->ai_addrlen = sizeof(dataconn_addr);
-  connected_info->ai_addr = (struct sockaddr *) &dataconn_addr;
+  // If the server has load balancing this is rendered pointless as we can 
+  // just use host_IPaddrinfos(host, port) to find the socket address
+  // for the data connection because it would be hosted with the same name. 
+  // Load balancing is not obligatory in the FTP standard so we need to create
+  // the socket address struct to make it work for everyone. 
+  struct addrinfo dataconn_addrinfo;
 
-  int data_socket_fd = open_connect_socket(connected_info);
+  dataconn_addrinfo.ai_family = AF_INET;
+  dataconn_addrinfo.ai_addrlen = sizeof(dataconn_addr);
+  dataconn_addrinfo.ai_addr = (struct sockaddr *) &dataconn_addr;
+
+  int data_socket_fd = open_connect_socket(&dataconn_addrinfo);
   
-  freeaddrinfo(host_addrinfos);
-
   return data_socket_fd;
 }

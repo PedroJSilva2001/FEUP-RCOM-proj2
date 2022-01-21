@@ -49,6 +49,7 @@ int check_connection_establishment(int ctrl_socket_fd) {
       break;
 
       case '2':
+        free_reply(&reply);
         return 0;
       break;
 
@@ -160,7 +161,7 @@ int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *por
     printf("host might be implementing incorrectly the FTP standard\n");
     dump_and_free_reply(&reply);
     return 1; 
-  } // 227 Entering Passive Mode (193,137,29,15,207,215)
+  }
 
   int start = capt_groups[IP_PORT_CAPT_GROUP].rm_so;
 
@@ -237,6 +238,7 @@ int save_file(int data_socket_fd, char* filename) {
   int file_fd = open(filename, O_WRONLY | O_CREAT, 0777);
 
   if (file_fd < 0) {
+    fprintf(stderr, "open: %s\n", strerror(errno));
     return 1;
   }
 
@@ -245,7 +247,7 @@ int save_file(int data_socket_fd, char* filename) {
 
   while ((bytes = recv(data_socket_fd, buf, FILE_RW_SIZE, 0)) > 0) {
     if (write(file_fd, buf, bytes) < 0) {  // TODO: check if nr bytes read is same as nr bytes saved
-      fprintf(stderr, "socket: %s\n", strerror(errno));
+      fprintf(stderr, "write: %s\n", strerror(errno));
       close(file_fd);
       return 1;
     }

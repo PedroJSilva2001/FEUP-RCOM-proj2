@@ -28,22 +28,23 @@ int main(int argc, const char *argv[]) {
   }
 
   if (check_connection_establishment(ctrl_socket_fd)) {
+    printf("Connection to host has failed\n");
     return 1;
   }
 
-  printf("Connection established to host.\n");
+  printf("Connection established to host successfully.\n");
 
   if (login(ctrl_socket_fd, &info)) {
-    printf("error: couldn't log in\n");
+    printf("error: couldn't log in to server\n");
     return 1;
   }
 
-  printf("Logged in successfuly.\n");
+  printf("Logged in successfully.\n");
 
   unsigned char ip[4];
   unsigned char port[2];
 
-  if (enter_passive_mode(ctrl_socket_fd, ip, port) == -1) {
+  if (enter_passive_mode(ctrl_socket_fd, ip, port)) {
     printf("error: couldn't enter passive mode\n");
     return 1;
   }
@@ -52,11 +53,14 @@ int main(int argc, const char *argv[]) {
 
   if (data_socket_fd == -1) {
     printf("error: couldn't connect to host data port\n");
+    return 1;
   }
 
   printf("Entered passive mode.\n");
 
-  if (retrieve_file(ctrl_socket_fd, data_socket_fd, &info) == -1) {
+  printf("Retrieving file...\n");
+
+  if (retrieve_file(ctrl_socket_fd, data_socket_fd, &info)) {
     printf("error: couldn't retrieve file successfully\n");
     return 1;
   }
@@ -65,6 +69,7 @@ int main(int argc, const char *argv[]) {
 
   disconnect(ctrl_socket_fd);
 
+  // TODO: atexit
   close(ctrl_socket_fd);
   close(data_socket_fd);
 
