@@ -5,22 +5,46 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+static ftp_client_info info;
+static int ctrl_socket_fd;
+static int data_socket_fd;
+
+void close_ctrl_socket() {
+  printf("ctrl\n");
+  close(ctrl_socket_fd);
+}
+
+void close_data_socket() {
+    printf("data\n");
+  close(data_socket_fd);
+}
+
+void free_ftp_client_info() {
+    printf("info\n");
+  free(info.user);
+  free(info.pass);
+  free(info.host);
+  free(info.path);
+}
+
 int main(int argc, const char *argv[]) {
   if (argc != 2) {
     printf("error: invalid number of parameters\nUse case is: download <URL>\n");
     return 1;
   }
 
-  ftp_client_info info;
-
   int url_err = parse_URL(&info, argv[1]);
+
+  atexit(free_ftp_client_info);
 
   if (url_err) {
     printf("error: the URL is incorrect\nIt should follow the format: ftp://[<user>:<pass>@]<host>/<path>");
     return 1;
   }
 
-  int ctrl_socket_fd = connect_to_host(&info);
+  ctrl_socket_fd = connect_to_host(&info);
+
+  atexit(close_ctrl_socket);
 
   if (ctrl_socket_fd == -1) {
     printf("error: couldn't connect to host FTP control port\n");
@@ -49,7 +73,9 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  int data_socket_fd = connect_to_host_data_port(ip, port);
+  data_socket_fd = connect_to_host_data_port(ip, port);
+
+  atexit(close_data_socket);
 
   if (data_socket_fd == -1) {
     printf("error: couldn't connect to host data port\n");
@@ -68,15 +94,6 @@ int main(int argc, const char *argv[]) {
   printf("File saved successfully.\n");
 
   disconnect(ctrl_socket_fd);
-
-  // TODO: atexit
-  close(ctrl_socket_fd);
-  close(data_socket_fd);
-
-  free(info.user);
-  free(info.pass);
-  free(info.host);
-  free(info.path);
 
   return 0;
 }
