@@ -123,6 +123,30 @@ int login(int ctrl_socket_fd, ftp_client_info *info) {
   return 0;
 }
 
+int set_representation_type(int ctrl_socket_fd, const char *type) {
+  if (send_command_fmt(ctrl_socket_fd, "TYPE %s\r\n", CMD_BASE_LEN, type)) {
+    printf("error: could not send TYPE command to host\n");
+    return 1;
+  }
+  
+  int err = read_reply(ctrl_socket_fd, &reply);
+
+  if (err) { return err; }
+
+  char *codes_type[6] = {"200", "421", "500", "501", "504", "530"};
+
+  if (assert_valid_code(reply.code, codes_type, 6)) { return 1; }
+  
+  if (reply.code[0] == '5' || reply.code[0] == '4') {	
+    printf("error: something has gone wrong in FTP communication with host while setting representation type\n");
+    dump_and_free_reply(&reply);
+    return 1;
+  }
+  
+  free_reply(&reply);
+  return 0;
+}
+
 int enter_passive_mode(int ctrl_socket_fd, unsigned char *ip, unsigned char *port) {
   if (send_command(ctrl_socket_fd, "PASV\r\n")) {
     printf("error: could not send PASV command to host\n");

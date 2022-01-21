@@ -122,4 +122,6 @@ int check_connection_establishment(int ctrl_socket_fd);
  */
 void disconnect(int ctrl_socket_fd);
 
+int set_representation_type(int ctrl_socket_fd, const char *type);
+
 #endif
