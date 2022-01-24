@@ -28,7 +28,7 @@ typedef enum {
   AWAITING_END_NEWLINE,
 } ftp_reply_state;
 
-/** @brief Logs in an user (or anonymous) in th socket.
+/** @brief Logs in an user (or anonymous) in server.
  *  @param ctrl_socket_fd File descriptor of the socket.
  *  @param info The ftp_client_info struct.
  *  @return Returns 0 upon success, error codes otherwise.
@@ -122,6 +122,11 @@ int check_connection_establishment(int ctrl_socket_fd);
  */
 void disconnect(int ctrl_socket_fd);
 
+/** @brief Changes mode of transfer (ASCII or image).
+ *  @param ctrl_socket_fd File descriptor of the socket.
+ *  @param type Type of transfer.
+ *  @return Returns 0 upon success, 1 otherwise.
+ */
 int set_representation_type(int ctrl_socket_fd, const char *type);
 
 #endif
