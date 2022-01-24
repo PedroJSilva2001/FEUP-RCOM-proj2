@@ -243,7 +243,7 @@ int send_command(int ctrl_socket_fd, char* command) {
     fprintf(stderr, "send: %s\n", strerror(errno));
     return 1;
   }
-  // TODO: maybe enforce that all bytes are sent
+
   return 0;
 }
 
@@ -270,7 +270,7 @@ int save_file(int data_socket_fd, char* filename) {
   char buf[FILE_RW_SIZE];
 
   while ((bytes = recv(data_socket_fd, buf, FILE_RW_SIZE, 0)) > 0) {
-    if (write(file_fd, buf, bytes) < 0) {  // TODO: check if nr bytes read is same as nr bytes saved
+    if (write(file_fd, buf, bytes) < 0) {  
       fprintf(stderr, "write: %s\n", strerror(errno));
       close(file_fd);
       return 1;
